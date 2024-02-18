@@ -13,5 +13,11 @@ namespace Assignment3
         public Teacher CourseTeacher { get; set; } 
         public List<Topic> Topics { get; set; } 
         public double Fees { get; set; } 
+        public Courses(Guid id, string name,double fees)
+        {
+            Id = id;
+            Name = name;
+            Fees = fees;
+        }
     }
 }

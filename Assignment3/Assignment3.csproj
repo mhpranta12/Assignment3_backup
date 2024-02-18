@@ -9,4 +9,7 @@
 	<ItemGroup>
 		<PackageReference Include="Microsoft.Data.SqlClient" Version="5.1.5" />
 	</ItemGroup>
+	<ItemGroup>
+	  <ProjectReference Include="..\..\Assignment3Test\Assignment3Test\Assignment3Test.csproj" />
+	</ItemGroup>
 </Project>

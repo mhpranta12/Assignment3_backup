@@ -1,4 +1,6 @@
-﻿using Microsoft.Data.SqlClient;
+﻿using Assignment3Test.TestCase1;
+using Microsoft.Data.SqlClient;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -38,12 +40,12 @@ namespace Assignment3
         {
             PerformDeletetionById(id);
         }
-        public List<object> GetById(G id)
+        public T GetById(G id)
         {
             var itemType = typeof(T);
             return PerformGetById(id, itemType);
         }
-        public List<object> GetAll()
+        public IEnumerable<T> GetAll()
         {
             var itemType = typeof(T);
             return PerformGetAll(itemType);
@@ -63,7 +65,7 @@ namespace Assignment3
                 {
                     //Console.WriteLine("Table Exist");
                     var type = item.GetType();
-                    var properties = type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                    var properties = type.GetProperties(BindingFlags.Instance | BindingFlags.Public);
 
                     foreach (var property in properties)
                     {
@@ -125,7 +127,7 @@ namespace Assignment3
                 if (SubTableExistance(item, type, parent, parentType))
                 {
                     //Console.WriteLine("Sub Table Exist");
-                    var properties = type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                    var properties = type.GetProperties(BindingFlags.Instance | BindingFlags.Public );
                     foreach (var property in properties)
                     {
                         var propertyType = property.PropertyType;
@@ -173,7 +175,7 @@ namespace Assignment3
             foreach (var item in items)
             {
                 var type = item.GetType();
-                var properties = type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                var properties = type.GetProperties(BindingFlags.Instance | BindingFlags.Public);
                 if (IsComplexType(type) || IsIterableType(type))
                 {
                     NestedTypeDBOperation(item, type, parent, parent.GetType(), operationType);
@@ -408,7 +410,7 @@ namespace Assignment3
         }
         // ----------------------- Delete Query End -----------------------------------
         // ----------------------- Get By Id Query ---------------------------
-        public List<object> PerformGetById(G Id, Type type)
+        public T PerformGetById(G Id, Type type)
         {
             string tableName = type.Name;
             List<string> placeHolders = new List<string>() { "@id" };
@@ -420,7 +422,7 @@ namespace Assignment3
         }
         // ----------------------- Get By Id Query End---------------------------
         // ----------------------- GetAll By Id Query ---------------------------
-        public List<object> PerformGetAll(Type type)
+        public IEnumerable<T> PerformGetAll(Type type)
         {
             string tableName = type.Name;
             string query = $"SELECT* FROM {tableName};";
@@ -572,10 +574,32 @@ namespace Assignment3
                 }
             }
         }
-        public List<object> ExecuteSQLReader(string query)
+        public IEnumerable<T> ExecuteSQLReader(string query)
         {
-            List<object> results = new List<object>();
-            using (SqlConnection connection = new SqlConnection(_connectionString))
+            List<T> results = new List<T>();
+            Type genericType = typeof(T);
+            var props = typeof(T).GetProperties(BindingFlags.Instance|BindingFlags.Public);
+            int primitives = 0,iter=0;
+            foreach (var prop in props)
+            {
+                if (!IsComplexType(prop.PropertyType) && !IsIterableType(prop.PropertyType))
+                {
+                    ++primitives;
+                }
+            }
+            List<Type> typeArguments = new List<Type>();
+            int index = 0;
+            foreach (var prop in props)
+            {
+                if (!IsComplexType(prop.PropertyType) && !IsIterableType(prop.PropertyType))
+                {
+                    typeArguments.Add(prop.PropertyType);
+                    ++index;
+                }
+            }
+            Type[] newtypeArguments = typeArguments.ToArray();
+            object[] retrievedValues = null;
+            using(SqlConnection connection = new SqlConnection(_connectionString))
             {
                 connection.Open();
                 SqlCommand cmd = new SqlCommand(query, connection);
@@ -583,10 +607,17 @@ namespace Assignment3
                 {
                     while (reader.Read())
                     {
+                        retrievedValues = new object[reader.FieldCount];
                         // Inserting column names
                         for (int i = 0; i < reader.FieldCount; i++)
                         {
-                            results.Add(reader.GetValue(i));
+                            retrievedValues[i] = (reader.GetValue(i));
+                            if (i%primitives==0)
+                            {
+                                ConstructorInfo constructor = genericType.GetConstructor(newtypeArguments);
+                                var instance = constructor.Invoke(retrievedValues);
+                                results.Add((T)instance);
+                            }
                         }
                         //int productId = reader.GetInt32(0);
                         //string productName = reader.GetString(1);
@@ -596,11 +627,11 @@ namespace Assignment3
                     }
                 }
             }
-            return results;
+            return (IEnumerable<T>)results;
         }
-        public List<object> ExecuteSQLReaderParameterized(string query, List<string> placeHolders, List<object> values)
+        public T ExecuteSQLReaderParameterized(string query, List<string> placeHolders, List<object> values)
         {
-            List<object> results = new List<object>();
+            object[] retrievedValues = null;
             using (SqlConnection connection = new SqlConnection(_connectionString))
             {
                 connection.Open();
@@ -614,10 +645,11 @@ namespace Assignment3
                     {
                         while (reader.Read())
                         {
+                            retrievedValues = new object[reader.FieldCount];
                             // Inserting column names
                             for (int i = 0; i < reader.FieldCount; i++)
                             {
-                                results.Add(reader.GetValue(i));
+                                 retrievedValues[i] = (reader.GetValue(i));
                             }
                             //int productId = reader.GetInt32(0);
                             //string productName = reader.GetString(1);
@@ -626,14 +658,30 @@ namespace Assignment3
                     }
                 }
             }
-            return results;
+            Type genericType = typeof(T);
+            var props = typeof(T).GetProperties(BindingFlags.Instance | BindingFlags.Public );
+            List<Type>typeArguments = new List<Type>(); 
+            int index = 0;
+            foreach (var prop in props)
+            {
+                if(!IsComplexType(prop.PropertyType) && !IsIterableType(prop.PropertyType))
+                {
+                    typeArguments.Add(prop.PropertyType);
+                    ++index;
+                }
+            }
+            Type[] newtypeArguments = typeArguments.ToArray();
+            ConstructorInfo constructor = genericType.GetConstructor(newtypeArguments);
+            var instance = constructor.Invoke(retrievedValues); 
+            
+            return (T)instance;
         }
         // -------------------   DB Utility -------------------------
         // -------------------   Existance Checking  ---------------------
         public G GetValueOfId(object item)
         {
             var type = item.GetType();
-            var properties = type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            var properties = type.GetProperties(BindingFlags.Instance | BindingFlags.Public );
             G Id = default;
             foreach (var property in properties)
             {
@@ -750,7 +798,7 @@ namespace Assignment3
         {
             bool hasAllPrimitiveType = true;
             var type = item.GetType();
-            var properties = type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            var properties = type.GetProperties(BindingFlags.Instance | BindingFlags.Public );
             foreach (var property in properties)
             {
                 var propertyType = property.PropertyType;
