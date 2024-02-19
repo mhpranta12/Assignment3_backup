@@ -854,6 +854,8 @@ namespace Assignment3
                     return typeof(double);
                 case "int":
                     return typeof(int);
+                case "float":
+                    return typeof(double);
                 case "nvarchar":
                 case "varchar":
                     return typeof(string);
