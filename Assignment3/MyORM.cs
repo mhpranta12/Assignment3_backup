@@ -66,7 +66,7 @@ namespace Assignment3
                     //Console.WriteLine("Table Exist");
                     var type = item.GetType();
                     var properties = type.GetProperties(BindingFlags.Instance | BindingFlags.Public);
-
+                    List<PropertyInfo> propertiesList = new List<PropertyInfo>();
                     foreach (var property in properties)
                     {
                         var propertyType = property.PropertyType;
@@ -78,26 +78,28 @@ namespace Assignment3
                                 subItems.Add(propertyValue);
                             }
                         }
+                        else
+                        {
+                            propertiesList.Add(property);
+                        }
+                    }
+                    PropertyInfo[] primitiveProperties = propertiesList.ToArray();
+                    if (operationType == DBOperationType.Insert)
+                    {
+                        PerformInsertion(primitiveProperties, item);
+                    }
+                    if (operationType == DBOperationType.Delete)
+                    {
+                        PerformDeletetion(item);
+                    }
+                    if (operationType == DBOperationType.Update)
+                    {
+                        PerformUpdate(primitiveProperties, item);
                     }
                     if (subItems.Count > 0)
                     {
                         SubItemsDBOperation(subItems, item, operationType);
                         subItems.Clear();
-                    }
-                    if (subItems.Count <= 0)
-                    {
-                        if (operationType == DBOperationType.Insert)
-                        {
-                            PerformInsertion(properties, item);
-                        }
-                        if (operationType == DBOperationType.Delete)
-                        {
-                            PerformDeletetion(item);
-                        }
-                        if (operationType == DBOperationType.Update)
-                        {
-                            PerformUpdate(properties, item);
-                        }
                     }
                 }
             }
@@ -128,6 +130,7 @@ namespace Assignment3
                 {
                     //Console.WriteLine("Sub Table Exist");
                     var properties = type.GetProperties(BindingFlags.Instance | BindingFlags.Public );
+                    List<PropertyInfo> propertiesList = new List<PropertyInfo>();
                     foreach (var property in properties)
                     {
                         var propertyType = property.PropertyType;
@@ -139,32 +142,34 @@ namespace Assignment3
                                 subItems.Add(propertyValue);
                             }
                         }
+                        else
+                        {
+                            propertiesList.Add(property);
+                        }
+                    }
+                    PropertyInfo[] primitiveProperties = propertiesList.ToArray();
+                    if (operationType == DBOperationType.Insert)
+                    {
+                        string foreignKeyColumn = GetForiegnKey(parent);
+                        G foreignKeyValue = GetValueOfId(parent);
+                        PerformInsertionOfChildTable(primitiveProperties, item, foreignKeyColumn, foreignKeyValue);
+                    }
+                    if (operationType == DBOperationType.Update)
+                    {
+                        string foreignKeyColumn = GetForiegnKey(parent);
+                        G foreignKeyValue = GetValueOfId(parent);
+                        PerformUpdateOfChildTable(primitiveProperties, item, foreignKeyColumn, foreignKeyValue);
+                    }
+                    if (operationType == DBOperationType.Delete)
+                    {
+                        string foreignKeyColumn = GetForiegnKey(parent);
+                        G foreignKeyValue = GetValueOfId(parent);
+                        PerformDeletetionOfChild(item, foreignKeyColumn, foreignKeyValue);
                     }
                     if (subItems.Count > 0)
                     {
                         SubItemsDBOperation(subItems, item, operationType);
                         subItems.Clear();
-                    }
-                    if (subItems.Count <= 0)
-                    {
-                        if (operationType == DBOperationType.Insert)
-                        {
-                            string foreignKeyColumn = GetForiegnKey(parent);
-                            G foreignKeyValue = GetValueOfId(parent);
-                            PerformInsertionOfChildTable(properties, item, foreignKeyColumn, foreignKeyValue);
-                        }
-                        if (operationType == DBOperationType.Update)
-                        {
-                            string foreignKeyColumn = GetForiegnKey(parent);
-                            G foreignKeyValue = GetValueOfId(parent);
-                            PerformUpdateOfChildTable(properties, item, foreignKeyColumn, foreignKeyValue);
-                        }
-                        if (operationType == DBOperationType.Delete)
-                        {
-                            string foreignKeyColumn = GetForiegnKey(parent);
-                            G foreignKeyValue = GetValueOfId(parent);
-                            PerformDeletetionOfChild(item, foreignKeyColumn, foreignKeyValue);
-                        }
                     }
                 }
             }

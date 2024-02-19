@@ -19,5 +19,8 @@ namespace Assignment3
             Name = name;
             Fees = fees;
         }
+        public Courses()
+        {
+        }
     }
 }
